@@ -70,8 +70,9 @@ public class TaskUtils {
         exportTask.setCreateTime("2018/10/26 17:50:05");
         exportTask.setBeanClass("com.example.quartz.job.ExecuteTask");
         exportTask.setExecuteMethod("hello");
+        exportTask.setExecuteParam(new Object[]{});
 
-        invokeMethod(exportTask);
+        System.out.println(invokeMethod(exportTask));
     }
 
 
