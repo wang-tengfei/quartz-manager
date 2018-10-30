@@ -37,6 +37,9 @@ public class TaskUtils {
     public static Method methodIsExist(String beanClass, String beanMethod, Object[] args) {
         try {
             Class<?> clazz = Class.forName(beanClass);
+            if(clazz == null){
+                return null;
+            }
 
             Method[] methods = clazz.getDeclaredMethods();
             for (Method method : methods) {

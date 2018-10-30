@@ -34,42 +34,45 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
     @Override
     public boolean addJob(ScheduleJob scheduleJob) {
         //校验调用方法是否存在
-        if(TaskUtils.methodIsExist(scheduleJob.getExecuteClass(), scheduleJob.getExecuteMethod(), scheduleJob.getExecuteParam()) == null){
+        if (TaskUtils.methodIsExist(scheduleJob.getExecuteClass(), scheduleJob.getExecuteMethod(), scheduleJob.getExecuteParam()) == null) {
             log.info("定时任务添加失败，执行方法未找到");
             return false;
         }
         //如果group为空，使用默认group
-        if(StringUtils.isEmpty(scheduleJob.getJobGroup())){
+        String jobGroup = scheduleJob.getJobGroup();
+        if (StringUtils.isEmpty(jobGroup)) {
             scheduleJob.setJobGroup(QuartzConstant.JOB_GROUP_NAME);
         }
 
         try {
-            TriggerKey triggerKey = TriggerKey.triggerKey(scheduleJob.getJobName(), scheduleJob.getJobGroup());
+            String jobName = scheduleJob.getJobName();
+            TriggerKey triggerKey = TriggerKey.triggerKey(jobName, jobGroup);
             /* 获取trigger，即在spring配置文件中定义的 bean id="schedulerFactoryBean" */
             CronTrigger trigger = (CronTrigger) scheduler.getTrigger(triggerKey);
 
-            if (trigger == null) {
-                JobDetail jobDetail = JobBuilder.newJob((Class<? extends Job>) Class.forName(QUARTZ_FACTORY)).withIdentity(scheduleJob.getJobName(), scheduleJob.getJobGroup()).build();
-                jobDetail.getJobDataMap().put("scheduleJob", scheduleJob);
-                //表达式调度构建器
-                CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleJob.getCronExpression());
-                //按新的cronExpression表达式构建一个新的trigger
-                trigger = TriggerBuilder.newTrigger().withIdentity(scheduleJob.getJobName(), scheduleJob.getJobGroup()).withSchedule(scheduleBuilder).build();
-                scheduler.scheduleJob(jobDetail, trigger);
-                log.info("定时任务:"+ triggerKey.getGroup() + "." + scheduleJob.getJobName() + ",添加成功");
-                return true;
+            ScheduleJob scheduleJobDb = taskRepository.getScheduleJobByJobNameAndJobGroup(jobName, jobGroup);
+            if(scheduleJobDb != null){
+                log.error("定时任务：" + jobGroup + "." + jobName + " 已存在数据库中");
+                return false;
             }
-
-            /* 表达式调度构建器 */
+            if (trigger != null) {
+                log.error("定时任务：" + jobGroup + "." + jobName + " 已存在定时任务中");
+                return false;
+            }
+            //表达式调度构建器
             CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleJob.getCronExpression());
-            /*按新的cronExpression表达式重新构建trigger */
-            trigger = trigger.getTriggerBuilder().withIdentity(triggerKey).withSchedule(scheduleBuilder).build();
-            /*按新的trigger重新设置job执行 */
-            scheduler.rescheduleJob(triggerKey, trigger);
+            //按新的cronExpression表达式构建一个新的trigger
+            trigger = TriggerBuilder.newTrigger().withIdentity(jobName, jobGroup).withSchedule(scheduleBuilder).build();
+
+            JobDetail jobDetail = JobBuilder.newJob((Class<? extends Job>) Class.forName(QUARTZ_FACTORY)).withIdentity(jobName, jobGroup).build();
+            jobDetail.getJobDataMap().put("scheduleJob", scheduleJob);
+            scheduler.scheduleJob(jobDetail, trigger);
+            log.info("定时任务:" + triggerKey.getGroup() + "." + jobName + ",添加成功");
 
             scheduleJob.setJobStatus(QuartzConstant.JOB_STATUS_CREATE);
             scheduleJob.setCreateTime(new Date());
-            taskRepository.save(scheduleJob);
+            ScheduleJob save = taskRepository.save(scheduleJob);
+            log.info(save + "");
             return true;
         } catch (SchedulerException | ClassNotFoundException e) {
             log.error("添加定时任务失败：" + e.getMessage());
@@ -92,7 +95,7 @@ public class ScheduleJobServiceImpl implements IScheduleJobService {
             //重启触发器
             scheduler.rescheduleJob(triggerKey, trigger);
         } catch (SchedulerException | NullPointerException e) {
-            log.error("定时任务"+ task.getJobName() +"修改失败：" + e.getMessage());
+            log.error("定时任务" + task.getJobName() + "修改失败：" + e.getMessage());
         }
     }
 

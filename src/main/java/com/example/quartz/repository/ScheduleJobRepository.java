@@ -11,6 +11,12 @@ import org.springframework.data.mongodb.repository.MongoRepository;
  */
 public interface ScheduleJobRepository extends MongoRepository<ScheduleJob, String>{
 
-    ScheduleJob getScheduleJobByJobId(Integer jobId);
+    /**
+     * 通过name 和job 获取定时任务
+     * @param jobName
+     * @param jobGroup
+     * @return
+     */
+    ScheduleJob getScheduleJobByJobNameAndJobGroup(String jobName, String jobGroup);
 
 }
