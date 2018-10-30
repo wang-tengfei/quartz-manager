@@ -1,4 +1,4 @@
-package com.example.quartz.job;
+package com.example.job;
 
 /**
  * @Author: Tengfei.Wang

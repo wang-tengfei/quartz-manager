@@ -1,13 +1,17 @@
 package com.example.quartz.service;
 
-import com.example.quartz.config.ExportTask;
-import com.example.quartz.utils.TaskUtils;
+import com.example.common.constant.QuartzConstant;
+import com.example.quartz.domain.ScheduleJob;
+import com.example.quartz.repository.ScheduleJobRepository;
+import com.example.common.utils.TaskUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
+import java.util.Date;
 
 /**
  * @Author: Tengfei.Wang
@@ -15,21 +19,28 @@ import javax.annotation.Resource;
  * @Date: Created in 下午5:06 26/10/18
  * @Modified by:
  */
-@Component(value = "quartzManager")
+@Service
 @Slf4j
-public class QuartzManagerImpl implements QuartzManager {
+public class ScheduleJobServiceImpl implements IScheduleJobService {
 
     @Resource(name = "schedulerFactoryBean")
     private Scheduler scheduler;
 
-    private static final String QUARTZ_FACTORY = "com.example.quartz.config.QuartzFactory";
+    @Autowired
+    private ScheduleJobRepository taskRepository;
+
+    private static final String QUARTZ_FACTORY = "com.example.config.QuartzFactory";
 
     @Override
-    public boolean addJob(ExportTask scheduleJob) {
+    public boolean addJob(ScheduleJob scheduleJob) {
         //校验调用方法是否存在
-        if(TaskUtils.methodIsExist(scheduleJob.getBeanClass(), scheduleJob.getExecuteMethod(), scheduleJob.getExecuteParam()) == null){
+        if(TaskUtils.methodIsExist(scheduleJob.getExecuteClass(), scheduleJob.getExecuteMethod(), scheduleJob.getExecuteParam()) == null){
             log.info("定时任务添加失败，执行方法未找到");
             return false;
+        }
+        //如果group为空，使用默认group
+        if(StringUtils.isEmpty(scheduleJob.getJobGroup())){
+            scheduleJob.setJobGroup(QuartzConstant.JOB_GROUP_NAME);
         }
 
         try {
@@ -55,6 +66,10 @@ public class QuartzManagerImpl implements QuartzManager {
             trigger = trigger.getTriggerBuilder().withIdentity(triggerKey).withSchedule(scheduleBuilder).build();
             /*按新的trigger重新设置job执行 */
             scheduler.rescheduleJob(triggerKey, trigger);
+
+            scheduleJob.setJobStatus(QuartzConstant.JOB_STATUS_CREATE);
+            scheduleJob.setCreateTime(new Date());
+            taskRepository.save(scheduleJob);
             return true;
         } catch (SchedulerException | ClassNotFoundException e) {
             log.error("添加定时任务失败：" + e.getMessage());
@@ -63,7 +78,7 @@ public class QuartzManagerImpl implements QuartzManager {
     }
 
     @Override
-    public void editJob(ExportTask task) {
+    public void editJob(ScheduleJob task) {
         TriggerKey triggerKey = TriggerKey.triggerKey(task.getJobName(), task.getJobGroup());
         try {
             CronTrigger trigger = (CronTrigger) scheduler.getTrigger(triggerKey);
@@ -82,12 +97,8 @@ public class QuartzManagerImpl implements QuartzManager {
     }
 
     @Override
-    public void executeJob(ExportTask scheduleJob) {
-        String jobGroup = scheduleJob.getJobGroup();
-        JobKey jobKey = JobKey.jobKey(scheduleJob.getJobName());
-        if (!StringUtils.isEmpty(jobGroup)) {
-            jobKey = JobKey.jobKey(scheduleJob.getJobName(), scheduleJob.getJobGroup());
-        }
+    public void executeJob(ScheduleJob scheduleJob) {
+        JobKey jobKey = JobKey.jobKey(scheduleJob.getJobName(), scheduleJob.getJobGroup());
         try {
             scheduler.triggerJob(jobKey);
         } catch (SchedulerException e) {

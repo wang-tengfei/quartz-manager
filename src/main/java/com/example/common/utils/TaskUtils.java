@@ -1,11 +1,12 @@
-package com.example.quartz.utils;
+package com.example.common.utils;
 
-import com.example.quartz.config.ExportTask;
+import com.example.quartz.domain.ScheduleJob;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Date;
 
 /**
  * @Author: Tengfei.Wang
@@ -16,9 +17,9 @@ import java.lang.reflect.Parameter;
 @Slf4j
 public class TaskUtils {
 
-    public static boolean invokeMethod(ExportTask task) {
+    public static boolean invokeMethod(ScheduleJob task) {
         try {
-            String beanClass = task.getBeanClass();
+            String beanClass = task.getExecuteClass();
             Method method = methodIsExist(beanClass, task.getExecuteMethod(), task.getExecuteParam());
             if(method ==null){
                 return false;
@@ -62,13 +63,13 @@ public class TaskUtils {
     }
 
     public static void main(String[] args) {
-        ExportTask exportTask = new ExportTask();
-        exportTask.setJobId(1);
+        ScheduleJob exportTask = new ScheduleJob();
+        exportTask.setJobId("11");
         exportTask.setJobName("test");
         exportTask.setCronExpression("5 * * * * ? *");
         exportTask.setJobGroup("DEFAULT");
-        exportTask.setCreateTime("2018/10/26 17:50:05");
-        exportTask.setBeanClass("com.example.quartz.job.ExecuteTask");
+        exportTask.setCreateTime(new Date());
+        exportTask.setExecuteClass("com.example.job.ExecuteTask");
         exportTask.setExecuteMethod("hello");
         exportTask.setExecuteParam(new Object[]{});
 

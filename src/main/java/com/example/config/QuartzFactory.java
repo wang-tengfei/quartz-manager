@@ -1,6 +1,7 @@
-package com.example.quartz.config;
+package com.example.config;
 
-import com.example.quartz.utils.TaskUtils;
+import com.example.quartz.domain.ScheduleJob;
+import com.example.common.utils.TaskUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -23,10 +24,10 @@ public class QuartzFactory implements Job {
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
         try {
-            ExportTask task = (ExportTask) jobExecutionContext.getJobDetail().getJobDataMap().get("scheduleJob");
+            ScheduleJob task = (ScheduleJob) jobExecutionContext.getJobDetail().getJobDataMap().get("scheduleJob");
             log.info("定时任务开始:" + task.getJobName());
             if(!TaskUtils.invokeMethod(task)){
-                log.error("方法："+ task.getBeanClass() + "." + task.getExecuteMethod() +"("+ Arrays.toString(task.getExecuteParam()) +")调用失败");
+                log.error("方法："+ task.getExecuteClass() + "." + task.getExecuteMethod() +"("+ Arrays.toString(task.getExecuteParam()) +")调用失败");
             }
             log.info("定时任务结束:" + task.getJobName());
         } catch (Exception e) {
