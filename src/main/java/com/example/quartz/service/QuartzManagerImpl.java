@@ -27,7 +27,7 @@ public class QuartzManagerImpl implements QuartzManager {
     @Override
     public boolean addJob(ExportTask scheduleJob) {
         //校验调用方法是否存在
-        if(TaskUtils.methodIsExist(scheduleJob.getBeanClass(), scheduleJob.getExecuteMethod(), scheduleJob.getExecuteParam()) == null){
+        if (TaskUtils.methodIsExist(scheduleJob.getBeanClass(), scheduleJob.getExecuteMethod(), scheduleJob.getExecuteParam()) == null) {
             log.info("定时任务添加失败，执行方法未找到");
             return false;
         }
@@ -37,24 +37,18 @@ public class QuartzManagerImpl implements QuartzManager {
             /* 获取trigger，即在spring配置文件中定义的 bean id="schedulerFactoryBean" */
             CronTrigger trigger = (CronTrigger) scheduler.getTrigger(triggerKey);
 
-            if (trigger == null) {
-                JobDetail jobDetail = JobBuilder.newJob((Class<? extends Job>) Class.forName(QUARTZ_FACTORY)).withIdentity(scheduleJob.getJobName(), scheduleJob.getJobGroup()).build();
-                jobDetail.getJobDataMap().put("scheduleJob", scheduleJob);
-                //表达式调度构建器
-                CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleJob.getCronExpression());
-                //按新的cronExpression表达式构建一个新的trigger
-                trigger = TriggerBuilder.newTrigger().withIdentity(scheduleJob.getJobName(), scheduleJob.getJobGroup()).withSchedule(scheduleBuilder).build();
-                scheduler.scheduleJob(jobDetail, trigger);
-                log.info("定时任务:"+ triggerKey.getGroup() + "." + scheduleJob.getJobName() + ",添加成功");
-                return true;
+            if (trigger != null) {
+                return false;
             }
 
-            /* 表达式调度构建器 */
+            JobDetail jobDetail = JobBuilder.newJob((Class<? extends Job>) Class.forName(QUARTZ_FACTORY)).withIdentity(scheduleJob.getJobName(), scheduleJob.getJobGroup()).build();
+            jobDetail.getJobDataMap().put("scheduleJob", scheduleJob);
+            //表达式调度构建器
             CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleJob.getCronExpression());
-            /*按新的cronExpression表达式重新构建trigger */
-            trigger = trigger.getTriggerBuilder().withIdentity(triggerKey).withSchedule(scheduleBuilder).build();
-            /*按新的trigger重新设置job执行 */
-            scheduler.rescheduleJob(triggerKey, trigger);
+            //按新的cronExpression表达式构建一个新的trigger
+            trigger = TriggerBuilder.newTrigger().withIdentity(scheduleJob.getJobName(), scheduleJob.getJobGroup()).withSchedule(scheduleBuilder).build();
+            scheduler.scheduleJob(jobDetail, trigger);
+            log.info("定时任务:" + triggerKey.getGroup() + "." + scheduleJob.getJobName() + ",添加成功");
             return true;
         } catch (SchedulerException | ClassNotFoundException e) {
             log.error("添加定时任务失败：" + e.getMessage());
@@ -77,7 +71,7 @@ public class QuartzManagerImpl implements QuartzManager {
             //重启触发器
             scheduler.rescheduleJob(triggerKey, trigger);
         } catch (SchedulerException | NullPointerException e) {
-            log.error("定时任务"+ task.getJobName() +"修改失败：" + e.getMessage());
+            log.error("定时任务" + task.getJobName() + "修改失败：" + e.getMessage());
         }
     }
 
